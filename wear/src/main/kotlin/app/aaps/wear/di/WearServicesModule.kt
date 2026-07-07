@@ -20,6 +20,7 @@ import app.aaps.wear.complications.UploaderBatteryComplication
 import app.aaps.wear.complications.WallpaperComplication
 import app.aaps.wear.heartrate.HeartRateListener
 import app.aaps.wear.tile.ActionsTileService
+import app.aaps.wear.tile.BGTileService
 import app.aaps.wear.tile.LoopStateTileService
 import app.aaps.wear.tile.QuickWizardTileService
 import app.aaps.wear.tile.TempTargetTileService
@@ -69,5 +70,5 @@ abstract class WearServicesModule {
     @ContributesAndroidInjector abstract fun contributesTempTargetTileService(): TempTargetTileService
     @ContributesAndroidInjector abstract fun contributesActionsTileService(): ActionsTileService
     @ContributesAndroidInjector abstract fun contributesLoopStateTileService(): LoopStateTileService
-
+    @ContributesAndroidInjector abstract fun contributesBGTileService(): BGTileService
 }

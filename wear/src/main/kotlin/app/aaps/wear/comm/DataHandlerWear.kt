@@ -1,6 +1,7 @@
 package app.aaps.wear.comm
 
 import app.aaps.wear.interaction.actions.WizardResultActivity
+import app.aaps.wear.tile.BGTileService
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,9 +9,11 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -194,6 +197,9 @@ class DataHandlerWear @Inject constructor(
                     // Trigger complications AFTER DataStore write completes
                     // This ensures complications showing IOB/COB/BR update immediately
                     triggerComplicationUpdates()
+
+                    // Trigger Tile update to refresh IOB/COB
+                    TileService.getUpdater(context).requestUpdate(BGTileService::class.java)
                 }
                 LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
             }
@@ -209,6 +215,9 @@ class DataHandlerWear @Inject constructor(
 
                     // Trigger complications AFTER DataStore write completes
                     triggerComplicationUpdates()
+
+                    // Trigger Tile update
+                    TileService.getUpdater(context).requestUpdate(BGTileService::class.java)
                 }
 
                 LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
@@ -361,7 +370,9 @@ class DataHandlerWear @Inject constructor(
                 .setOnlyAlertOnce(true)
                 .addAction(R.drawable.ic_cancel, context.getString(R.string.cancel_bolus), cancelPendingIntent)
         val notificationManager = NotificationManagerCompat.from(context)
-        notificationManager.notify(DataLayerListenerServiceWear.BOLUS_PROGRESS_NOTIF_ID, notificationBuilder.build())
+        if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            notificationManager.notify(DataLayerListenerServiceWear.BOLUS_PROGRESS_NOTIF_ID, notificationBuilder.build())
+        }
         notificationManager.cancel(DataLayerListenerServiceWear.CONFIRM_NOTIF_ID) // multiple watch setup
         if (bolusProgress.percent == 100) {
             scheduleDismissBolusProgress(5)
