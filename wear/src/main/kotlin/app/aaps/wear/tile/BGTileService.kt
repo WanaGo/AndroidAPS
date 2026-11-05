@@ -20,6 +20,7 @@ import androidx.wear.tiles.ResourceBuilders
 import androidx.wear.tiles.TileBuilders.Tile
 import androidx.wear.tiles.TileService
 import app.aaps.core.interfaces.di.injectMetroMembers
+import app.aaps.wear.data.ComplicationData
 import app.aaps.wear.data.ComplicationDataRepository
 import app.aaps.wear.interaction.menus.MainMenuActivity
 import com.google.common.util.concurrent.Futures
@@ -49,13 +50,16 @@ class BGTileService : TileService() {
 
         // Re-render and request tile update on each new data arrival
         serviceScope.launch {
-            complicationDataRepository.complicationData
-                .drop(1)
-                .collect {
-                    resourceVersion.set(System.currentTimeMillis())
-                    getUpdater(this@BGTileService)
-                        .requestUpdate(BGTileService::class.java)
-                }
+            try {
+                complicationDataRepository.complicationData
+                    .drop(1)
+                    .collect {
+                        resourceVersion.set(System.currentTimeMillis())
+                        getUpdater(this@BGTileService)
+                            .requestUpdate(BGTileService::class.java)
+                    }
+            } catch (ignored: Exception) {
+            }
         }
     }
 
@@ -65,9 +69,19 @@ class BGTileService : TileService() {
     }
 
     override fun onTileRequest(requestParams: TileRequest): ListenableFuture<Tile> = serviceScope.future {
-        val data = complicationDataRepository.complicationData.first()
+        val data = try {
+            complicationDataRepository.complicationData.first()
+        } catch (e: Exception) {
+            ComplicationData()
+        }
         val bgData = data.bgData
         val statusData = data.statusData
+
+        val sgvText = bgData.sgvString.ifEmpty { "---" }
+        val arrowText = bgData.slopeArrow.ifEmpty { "--" }
+        val deltaText = bgData.delta.ifEmpty { "--" }
+        val iobText = "IOB: ${statusData.iobSum.ifEmpty { "0" }}"
+        val cobText = "COB: ${statusData.cob.ifEmpty { "0" }}"
 
         val minutesAgo = if (bgData.timeStamp > 0) {
             val diffMs = System.currentTimeMillis() - bgData.timeStamp
@@ -99,7 +113,7 @@ class BGTileService : TileService() {
             )
             .addContent(
                 Text.Builder()
-                    .setText(bgData.sgvString)
+                    .setText(sgvText)
                     .setFontStyle(
                         FontStyle.Builder()
                             .setSize(sp(60f))
@@ -114,14 +128,14 @@ class BGTileService : TileService() {
                 Row.Builder()
                     .addContent(
                         Text.Builder()
-                            .setText(bgData.slopeArrow)
+                            .setText(arrowText)
                             .setFontStyle(FontStyle.Builder().setSize(sp(24f)).build())
                             .build()
                     )
                     .addContent(Spacer.Builder().setWidth(dp(10f)).build())
                     .addContent(
                         Text.Builder()
-                            .setText(bgData.delta)
+                            .setText(deltaText)
                             .setFontStyle(FontStyle.Builder().setSize(sp(24f)).build())
                             .build()
                     )
@@ -132,14 +146,14 @@ class BGTileService : TileService() {
                 Row.Builder()
                     .addContent(
                         Text.Builder()
-                            .setText("IOB: ${statusData.iobSum}")
+                            .setText(iobText)
                             .setFontStyle(FontStyle.Builder().setSize(sp(16f)).build())
                             .build()
                     )
                     .addContent(Spacer.Builder().setWidth(dp(12f)).build())
                     .addContent(
                         Text.Builder()
-                            .setText("COB: ${statusData.cob}")
+                            .setText(cobText)
                             .setFontStyle(FontStyle.Builder().setSize(sp(16f)).build())
                             .build()
                     )
